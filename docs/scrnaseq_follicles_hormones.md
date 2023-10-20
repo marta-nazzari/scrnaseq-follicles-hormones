@@ -1,0 +1,396 @@
+scRNA-Seq_human_follicles_hormones
+================
+marta_nazzari
+
+Create Seurat object
+
+``` r
+library(tidyverse)
+library(magrittr)
+library(Seurat)
+library(HGNChelper)
+library(tuple)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(enrichplot)
+library(ggraph)
+library(igraph)
+library(tidyverse)
+library(data.tree)
+library(scater)
+library(ReactomePA)
+library(scCustomize)
+library(scater)
+library(ggvenn)
+library(topGO)
+library(Rgraphviz)
+
+`%notin%` = Negate(`%in%`)
+FDR = 0.05
+set.seed(42)
+
+resolution = 0.5
+
+# main working directory
+setwd('/project/')
+dir.create('/project/analysis/plots/', showWarnings = F)
+
+# Load the dataset
+Untr_Ctrl.data = Read10X(data.dir = '/project/raw_data/Untr_Ctrl/outs/filtered_feature_bc_matrix/')
+Untr_Ctrl.data = CreateSeuratObject(counts = Untr_Ctrl.data, project = 'Untr_Ctrl')
+Untr_Ctrl.data
+
+Untr_BaP.data = Read10X(data.dir = '/project/raw_data/Untr_BaP/outs/filtered_feature_bc_matrix/')
+Untr_BaP.data = CreateSeuratObject(counts = Untr_BaP.data, project = 'Untr_BaP')
+Untr_BaP.data
+
+Male_PCB153.data = Read10X(data.dir = '/project/raw_data/Male_PCB153/outs/filtered_feature_bc_matrix/')
+Male_PCB153.data = CreateSeuratObject(counts = Male_PCB153.data, project = 'Male_PCB153')
+Male_PCB153.data
+
+Male_Ctrl.data = Read10X(data.dir = '/project/raw_data/Male_Ctrl/outs/filtered_feature_bc_matrix/')
+Male_Ctrl.data = CreateSeuratObject(counts = Male_Ctrl.data, project = 'Male_Ctrl')
+Male_Ctrl.data
+
+Male_BaP.data = Read10X(data.dir = '/project/raw_data/Male_BaP/outs/filtered_feature_bc_matrix/')
+Male_BaP.data = CreateSeuratObject(counts = Male_BaP.data, project = 'Male_BaP')
+Male_BaP.data
+
+Female_PCB153.data = Read10X(data.dir = '/project/raw_data/Female_PCB153/outs/filtered_feature_bc_matrix/')
+Female_PCB153.data = CreateSeuratObject(counts = Female_PCB153.data, project = 'Female_PCB153')
+Female_PCB153.data
+
+Female_Ctrl.data = Read10X(data.dir = '/project/raw_data/Female_Ctrl/outs/filtered_feature_bc_matrix/')
+Female_Ctrl.data = CreateSeuratObject(counts = Female_Ctrl.data, project = 'Female_Ctrl')
+Female_Ctrl.data
+
+Female_BaP.data = Read10X(data.dir = '/project/raw_data/Female_BaP/outs/filtered_feature_bc_matrix/')
+Female_BaP.data = CreateSeuratObject(counts = Female_BaP.data, project = 'Female_BaP')
+Female_BaP.data
+
+# sample names
+samples = c('Untr_Ctrl', 'Untr_BaP', 
+            'Male_PCB153','Male_Ctrl','Male_BaP', 
+            'Female_PCB153','Female_Ctrl', 'Female_BaP')
+
+# initialize the Seurat object with the raw (non-normalized data).
+sobj = merge(Untr_Ctrl.data, y = c(Untr_BaP.data, Male_PCB153.data, Male_Ctrl.data, Male_BaP.data,
+                                   Female_PCB153.data, Female_Ctrl.data, Female_BaP.data), 
+             add.cell.ids = c('Untr_Ctrl', 'Untr_BaP', 'Male_PCB153','Male_Ctrl','Male_BaP', 
+                              'Female_PCB153','Female_Ctrl', 'Female_BaP'), 
+             project = 'human_follicles_hormones')
+
+# add sample info to metadata
+DefaultAssay(sobj) = ASSAY = 'RNA'
+sobj@meta.data %<>% dplyr::rename(sample = 'orig.ident') %>% 
+  separate(col = 'sample', into = c('hormones', 'EDC'), sep = '_', remove = F)
+
+# calculate % of reads mapping to mitochondrial DNA 
+sobj[['percent.mt']] = PercentageFeatureSet(sobj, pattern = '^MT-')
+
+# visualize QC metrics as a violin plot
+p1 = VlnPlot(seurat_object, features = 'nFeature_RNA') + 
+    geom_hline(yintercept = c(1700, 10000), color = 'red') +
+    scale_fill_manual(values = c('Female_BaP' = '#FFBB00', 'Female_Ctrl' = '#FFEA61', 'Female_PCB153' = '#FFFFB7', 
+                                 'Male_BaP' = '#408af1', 'Male_Ctrl' = '#78b6fa', 'Male_PCB153' = '#a8d7fa', 
+                                 'Untr_BaP' = 'red', 'Untr_Ctrl' = 'pink'))
+p2 = VlnPlot(seurat_object, features = 'nCount_RNA') + 
+    geom_hline(yintercept = 800, color = 'red') +
+    scale_fill_manual(values = c('Female_BaP' = '#FFBB00', 'Female_Ctrl' = '#FFEA61', 'Female_PCB153' = '#FFFFB7', 
+                                 'Male_BaP' = '#408af1', 'Male_Ctrl' = '#78b6fa', 'Male_PCB153' = '#a8d7fa', 
+                                 'Untr_BaP' = 'red', 'Untr_Ctrl' = 'pink'))
+p3 = VlnPlot(seurat_object, features = 'percent.mt') + 
+    geom_hline(yintercept = 12.5, color = 'red') +
+    scale_fill_manual(values = c('Female_BaP' = '#FFBB00', 'Female_Ctrl' = '#FFEA61', 'Female_PCB153' = '#FFFFB7', 
+                                 'Male_BaP' = '#408af1', 'Male_Ctrl' = '#78b6fa', 'Male_PCB153' = '#a8d7fa', 
+                                 'Untr_BaP' = 'red', 'Untr_Ctrl' = 'pink'))
+
+patchwork::wrap_plots(p1, p2, p3, ncol = 3)
+ggsave('/plots/before_filter.png', width = 16, height = 8, unit = 'in', dpi = 300)
+```
+
+Filter for number of features (i.e. genes), count (i.e. read count per
+cell) and percentage of reads mapping to the mitochondrial genome
+
+``` r
+sobj = subset(sobj, subset = nFeature_RNA > 1700 & nFeature_RNA < 10000 & nCount_RNA > 800 & percent.mt < 12.5)
+```
+
+Normalize data, run PCA and divide into clusters
+
+``` r
+# normalize data
+sobj[['percent.mt']] = PercentageFeatureSet(sobj, pattern = '^MT-')
+sobj = NormalizeData(sobj, normalization.method = 'LogNormalize', scale.factor = 10000)
+sobj = FindVariableFeatures(sobj, selection.method = 'vst', nfeatures = 2000)
+
+# scale and run PCA
+sobj = ScaleData(sobj, features = rownames(sobj))
+sobj = RunPCA(sobj, features = VariableFeatures(object = sobj))
+
+# investigate genes influencing the loading scores
+print(sobj[['pca']], dims = 1:5, nfeatures = 5)
+VizDimLoadings(sobj, dims = 1:3, reduction = 'pca')
+DimPlot(sobj, reduction = 'pca')
+
+# first construct a KNN graph based on the euclidean distance in PCA space, and refine the edge weights between any two cells based on the shared overlap in their local neighborhoods (Jaccard similarity).
+# input: selected amount of PCs
+sobj = FindNeighbors(sobj, dims = 1:15)
+
+# modularity optimization techniques: Louvain algorithm (default) or SLM
+# setting the resolution between 0.4-1.2 typically returns good results for single-cell datasets of around 3K cells. Optimal resolution often increases for larger datasets.
+sobj = FindClusters(sobj, resolution = resolution) 
+# determines the amount of clusters to use more precisely then reading the elbowplot. Resolution = between 0.4 (least resolution) and 1.2 (max resolution)
+clusters = Idents(sobj)
+
+sobj = RunUMAP(sobj, dims = 1:length(levels(clusters)))
+DimPlot(sobj, reduction = 'umap', label = T, seed = 42, group.by = 'seurat_clusters')
+```
+
+Annotate clusters
+
+``` r
+# load gene set preparation function
+source('/project/scripts/gene_sets_prepare.R')
+# load cell type annotation function
+source('/project/scripts/sctype_score_.R')
+
+# DB file
+db = '/project/sc_annotation_file.xlsx'
+tissue = c('Thyroid')
+
+# prepare gene sets
+gs_list = gene_sets_prepare(db, tissue)
+
+# get cell-type by cell matrix
+es.max = sctype_score(scRNAseqData = sobj[['RNA']]@scale.data, scaled = TRUE, 
+                      gs = gs_list$gs_positive, gs2 = gs_list$gs_negative) 
+
+# NOTE: scRNAseqData parameter should correspond to your input scRNA-seq matrix. 
+# In case Seurat is used, it is either sobj[['RNA']]@scale.data (default), sobj[['SCT']]@scale.data, in case sctransform is used for normalization,
+# or sobj[['integrated']]@scale.data, in case a joint analysis of multiple single-cell datasets is performed.
+
+# merge by cluster
+cL_resutls = do.call('rbind', lapply(unique(sobj@meta.data$seurat_clusters), function(cl){
+    es.max.cl = sort(rowSums(es.max[ , rownames(sobj@meta.data[sobj@meta.data$seurat_clusters == cl, ])]), decreasing = !0)
+    head(data.frame(cluster = cl, type = names(es.max.cl), scores = es.max.cl, ncells = sum(sobj@meta.data$seurat_clusters == cl)), 10)
+}))
+sctype_scores = cL_resutls %>% group_by(cluster) %>% top_n(n = 1, wt = scores)  
+
+
+# set low-confident (low ScType score) clusters to 'unknown'
+sctype_scores$type[as.numeric(as.character(sctype_scores$scores)) < sctype_scores$ncells/4] = 'Unknown'
+print(sctype_scores[, 1:3])
+
+
+# Overlay the annotation on the UMAP
+sobj@meta.data$customclassif = ''
+for(j in unique(sctype_scores$cluster)){
+  cl_type = sctype_scores[sctype_scores$cluster == j,]; 
+  sobj@meta.data$customclassif[sobj@meta.data$seurat_clusters == j] = as.character(cl_type$type[1])
+}
+
+DimPlot(sobj, reduction = 'umap', label = TRUE, seed = 42, repel = T, group.by = c('seurat_clusters', 'customclassif')) 
+ggsave('/project/analysis/plots/UMAP_classification.png', width = 16, height = 8, unit = 'in', dpi = 300)
+```
+
+Violin plot (level of gene expression) and UMAP with overlapped pattern
+of gene expression (example)
+
+``` r
+# genes of interest
+genes = c('TPO', 'TG', 'SLC5A5', 'IYD', 'PAX8', 'NKX2-1', 'FOXE1', 'HHEX', 'DUOX1', 'DUOX2', 'DUOXA1', 'DUOXA2', 'SLC16A2', 'DIO1', 'DIO2', 'SLC26A7')
+
+# Note on VlnPlot(): by default it plots `slot = 'data'` (= ln-normalized values). If you want the raw counts, set `slot = 'counts'` 
+VlnPlot(sobj, 
+        features = genes, 
+        idents = 'Mature Thyrocytes', 
+        group.by = 'sample', 
+        cols = c('#FFBB00', '#FFEA61', '#FFFFB7', '#408af1', '#78b6fa', '#a8d7fa', 'red', 'pink')) 
+
+ggsave('/project/analysis/plots/violin_thyroid_gene.png', width = 40, height = 40, unit = 'cm', dpi = 300)
+
+
+FeaturePlot(sobj, reduction = 'umap', features = genes, ncol = 4) 
+FeaturePlot(sobj, reduction = 'umap', features = genes, split.by = 'sample') # one plot per sample
+```
+
+Average gene expression and percent of expressing cells (example)
+
+``` r
+# number of cells per cluster per sample
+table(sobj@meta.data$customclassif, sobj@meta.data$sample) %>% 
+  as.data.frame() %>% 
+  transform(percentage = Freq / tapply(Freq, Var2, sum)[Var2] * 100) %>% # find composition in percentage
+  ggplot(aes(x = Var2, y = percentage, fill = Var1)) +
+  geom_bar(stat = 'identity', position = 'fill', color = 'black') +
+  theme_bw() +
+  labs(x = 'Sample', y = 'Composition, %') + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_discrete(name = 'Cell type')
+
+ggsave('/project/analysis/plots/samples_cell_composition.png', width = 10, height = 10, unit = 'cm', dpi = 300)   
+
+
+# expression of hormone receptor genes per cell type
+genes = c('ESR1', 'ESR2', 'PGR', 'AR')
+
+AverageExpression(sobj, features = genes, group.by = 'customclassif') %>%
+    as.data.frame() %>%
+    rownames_to_column(var = 'gene') %>%
+    reshape2::melt(id.vars = 'gene',
+        variable.name = 'Annotated cell type',
+        value.name = 'Average expression') %>%
+    mutate(`Annotated cell type` = sub('RNA\\.', '', `Annotated cell type`)) %>%
+    mutate(`Annotated cell type` = gsub('\\.', ' ', `Annotated cell type`)) %>%
+    ggplot(aes(x = gene, y = `Average expression`, fill = `Annotated cell type`)) +
+        geom_bar(stat = 'identity', color = 'black', linewidth = .5, position = 'dodge') +
+        theme_bw() +
+        ggtitle('All cells') +
+        theme(plot.title = element_text(hjust = .5)) 
+
+ggsave('/project/analysis/plots/average_expression_hormone_receptors.png', width = 15, height = 10, units = 'cm', dpi = 300)
+
+
+# % of cells expressing hormone receptor genes per cell type
+scCustomize::Percent_Expressing(sobj, features = genes, group_by = 'customclassif') %>%
+    as.data.frame() %>%
+    rownames_to_column(var = 'Gene') %>%
+    reshape2::melt(id.vars = 'Gene',
+        variable.name = 'Annotated cell type',
+        value.name = 'Percent expressing') %>%
+    mutate(`Annotated cell type` = sub('RNA\\.', '', `Annotated cell type`)) %>%
+    mutate(`Annotated cell type` = gsub('\\.', ' ', `Annotated cell type`)) %>%
+    ggplot(aes(x = Gene, y = `Percent expressing`, fill = `Annotated cell type`)) +
+        geom_bar(stat = 'identity', position = 'dodge', color = 'black', linewidth = .5) +
+        geom_hline(yintercept = 10, linetype = 'dotted', col = 'grey25') + # for 10% threshold
+        theme_bw() +
+        ggtitle('All cells') +
+        theme(plot.title = element_text(hjust = .5))
+
+ggsave('/project/analysis/plots/percentage_expression_hormone_receptors.png', width = 15, height = 10, units = 'cm', dpi = 300)
+```
+
+Plot % reads mapping to ribosome genes in the Mature Thyrocytes cluster
+
+``` r
+# calculate %RP
+sobj[['percent.rp']] = PercentageFeatureSet(sobj, pattern = '^RP[SL]')
+
+# subset sobj for thyrocytes only 
+Mature_Thyrocytes_sobj = subset(sobj, subset = customclassif == 'Mature Thyrocytes') 
+
+# find min, max, median of %RP per sample
+df = data.frame(matrix(nrow = 8, ncol = 3))
+colnames(df) = c('Min', 'Median', 'Max') 
+rownames(df) = samples 
+
+for (i in 1:length(samples)) {
+    df[i, 1] = subset(Mature_Thyrocytes_sobj, subset = sample == samples[i])$percent.rp %>% min 
+    df[i, 2] = subset(Mature_Thyrocytes_sobj, subset = sample == samples[i])$percent.rp %>% median
+    df[i, 3] = subset(Mature_Thyrocytes_sobj, subset = sample == samples[i])$percent.rp %>% max
+    }
+
+# projection on UMAP of %RP
+FeaturePlot(Mature_Thyrocytes_sobj, reduction = 'umap', features = 'percent.rp', split.by = 'sample') 
+ggsave('percent_RP_thyrocytes.png', height = 10, width = 90, dpi = 300, units = 'cm')
+
+# Violin plot of %RP
+median.stat = function(x){
+    out = quantile(x, probs = c(0.5))
+    names(out) = c("ymed")
+    return(out) 
+}
+
+VlnPlot(object = Mature_Thyrocytes_sobj, group.by = 'sample', features = 'percent.rp') + 
+    stat_summary(fun.y = median.stat, geom = 'crossbar') + # to add median expression as a bar
+    labs(title = '', y = 'Percentage RP', x = 'Samples') +
+    scale_fill_manual(values = c('Female_BaP' = '#FFBB00', 'Female_Ctrl' = '#FFEA61', 'Female_PCB153' = '#FFFFB7', 
+                     'Male_BaP' = '#408af1', 'Male_Ctrl' = '#78b6fa', 'Male_PCB153' = '#a8d7fa', 
+                     'Untr_BaP' = 'red', 'Untr_Ctrl' = 'pink'))
+
+ggsave('/project/analysis/plots/violin_percent_RP_thyrocytes.png', height = 15, width = 15, dpi = 300, units = 'cm')
+```
+
+Differential expression analysis using Seurat::FindMarkers()
+
+``` r
+# add a col to the @meta.data that concatenates the cellType_condition
+sobj$cell_hormone_edc = paste(sobj@meta.data[, 'customclassif'],
+                      sobj@meta.data[, 'hormones'],
+                      sobj@meta.data[, 'EDC'], sep = '_')
+
+sobj$cell_hormone = paste(sobj@meta.data[, 'customclassif'],
+                  sobj@meta.data[, 'hormones'], sep = '_')
+
+Idents(sobj) = sobj$customclassif
+
+
+# comparisons i want to test
+test_comparisons = list(
+    male = c('Mature Thyrocytes_Male_Ctrl', 'Mature Thyrocytes_Untr_Ctrl'),
+    female = c('Mature Thyrocytes_Female_Ctrl', 'Mature Thyrocytes_Untr_Ctrl'),
+    male_female = c('Mature Thyrocytes_Male_Ctrl', 'Mature Thyrocytes_Female_Ctrl'),
+    bapResponse_affectedByMale = c('Mature Thyrocytes_Male_BaP', 'Mature Thyrocytes_Untr_BaP'),
+    bapResponse_affectedByFemale = c('Mature Thyrocytes_Female_BaP', 'Mature Thyrocytes_Untr_BaP'),
+    bapResponse = c('Mature Thyrocytes_Untr_BaP', 'Mature Thyrocytes_Untr_Ctrl'),
+    bapResponse_inMaleEnv = c('Mature Thyrocytes_Male_BaP', 'Mature Thyrocytes_Male_Ctrl'),
+    bapResponse_inFemaleEnv = c('Mature Thyrocytes_Female_BaP', 'Mature Thyrocytes_Female_Ctrl'),
+    PCB153Response_inMaleEnv = c('Mature Thyrocytes_Male_PCB153', 'Mature Thyrocytes_Male_Ctrl'), 
+    PCB153Response_inFemaleEnv = c('Mature Thyrocytes_Female_PCB153', 'Mature Thyrocytes_Female_Ctrl'))
+
+# where to store all results
+degs_all = list() # degs
+genes_all = list() # all genes
+
+for (x in 1:length(test_comparisons)) {
+    
+    print(paste0('Comparing ', test_comparisons[[x]][1], ' VS ', test_comparisons[[x]][2]))
+
+    # find DEGs
+    all_genes = FindMarkers(Mature_Thyrocytes_sobj, ident.1 = test_comparisons[[x]][1], ident.2 = test_comparisons[[x]][2], group.by = 'cell_hormone_edc')
+    
+    # assign DEGs results to list that collects them all
+    degs_all[[x]] = filter(all_genes, p_val_adj < FDR)
+    genes_all[[x]] = all_genes
+    names(degs_all)[[x]] = paste0(test_comparisons[[x]][1], '_VS_', test_comparisons[[x]][2])
+    names(genes_all)[[x]] = paste0(test_comparisons[[x]][1], '_VS_', test_comparisons[[x]][2])
+
+    # also, save results as a table
+    # all genes
+    write.csv(genes_all[[x]], paste0(test_comparisons[[x]][1], '_', test_comparisons[[x]][2], '_All_genes.csv'))
+    
+    # DEGs
+    write.csv(degs_all[[x]], paste0(test_comparisons[[x]][1], '_', test_comparisons[[x]][2], '_DEGs_FDR_', FDR, '.csv'))
+    
+    # how many genes have been tested and how many DEGs (FDR < 0.05) there are
+    num_genes = nrow(genes_all[[x]])
+    num_DEGs = nrow(degs_all[[x]])
+    DEG_percent = (num_DEGs/num_genes)*100
+
+    print(paste0('Found ', num_DEGs, ' unique DEGs (', num_genes, ' genes tested) when comparing ', test_comparisons[[x]][1], ' - ', test_comparisons[[x]][2], '; ', round(DEG_percent, digits = 1), '% is differentially expressed.'))
+    
+    # if want to subset a SeuratObject with only DEGs
+    #a = subset(sobj, features = rownames(filter(DEGs, p_val_adj < 0.01)))
+}
+
+# save all genes and DEGs in one excel file
+degs_all_save = degs_all
+for (x in 1:10) {
+    names(degs_all_save)[x] = paste0(map_chr(str_split(test_comparisons[[x]][1], 'Thyrocytes_'), 2), 
+                    '_VS_',
+                    map_chr(str_split(test_comparisons[[x]][2], 'Thyrocytes_'), 2))
+    
+    degs_all_save[[x]] %<>% rownames_to_column(var = 'gene')}
+writexl::write_xlsx(degs_all_save, 'DEGs_all_comparisons.xlsx')
+
+genes_all_save = genes_all
+for (x in 1:10) {
+    names(genes_all_save)[x] = paste0(map_chr(str_split(test_comparisons[[x]][1], 'Thyrocytes_'), 2), 
+                    '_VS_',
+                    map_chr(str_split(test_comparisons[[x]][2], 'Thyrocytes_'), 2))
+    
+    genes_all_save[[x]] %<>% rownames_to_column(var = 'gene')}
+writexl::write_xlsx(genes_all_save, 'all_genes_all_comparisons.xlsx')
+```
