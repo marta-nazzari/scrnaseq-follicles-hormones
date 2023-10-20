@@ -9,10 +9,10 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="marta_nazzari" />
+<meta name="author" content="author: Marta Nazzari" />
 
 
-<title>scRNA-Seq_human_follicles_hormones</title>
+<title>Impact of Endocrine Disrupting Chemicals and Sex Hormones on Human ESC-Derived Thyroid Follicles Using Single Cell Transcriptomics</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -349,13 +349,72 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">scRNA-Seq_human_follicles_hormones</h1>
-<h4 class="author">marta_nazzari</h4>
+<h1 class="title toc-ignore">Impact of Endocrine Disrupting Chemicals
+and Sex Hormones on Human ESC-Derived Thyroid Follicles Using Single
+Cell Transcriptomics</h1>
+<h4 class="author">author: Marta Nazzari</h4>
 
 </div>
 
 
-<p>Create Seurat object</p>
+<div id="set-up-working-directory-and-create-analysis-subfolders" class="section level2">
+<h2>Set up working directory and create analysis subfolders</h2>
+<pre class="r"><code># main working directory
+setwd(&#39;/project/&#39;)
+dir.create(&#39;/project/analysis/&#39;, showWarnings = F)
+dir.create(&#39;/project/analysis/plots/&#39;, showWarnings = F)</code></pre>
+</div>
+<div id="scrna-seq-dataset-stats" class="section level1">
+<h1>scRNA-Seq dataset stats</h1>
+<pre class="r"><code># sequenced reads
+read.table(&#39;/project/sequencing_qc.txt&#39;, sep = &#39;\t&#39;, header = T) %&gt;% # this table is stored locally
+  rename(`Number of cells` = &#39;Number.of.cells&#39;, # need to rename some columns that contain symbols
+         `Yield (Mbases)` = &#39;yield..Mbases.&#39;, 
+         `% &gt;= Q30 bases` = &#39;X.....Q30.bases&#39;,
+         `Mean Quality Score` = &#39;Mean.Quality.Score&#39;) %&gt;%
+  reshape2::melt(id.vars = &#39;Sample&#39;,
+                 value.name = &#39;value&#39;,
+                 variable.name = &#39;metric&#39;) %&gt;% 
+  ggplot(aes(x = 1, y = value)) +
+  geom_boxplot(aes(fill = metric), alpha = .3) +
+  geom_point() +   
+  ggrepel::geom_label_repel(aes(label = Sample), nudge_x = 0.3, direction = &#39;y&#39;) +
+  theme_bw() +
+  labs(x = &#39;&#39;, y = &#39;&#39;) +
+  scale_fill_manual(values = c(&#39;Number of cells&#39; = &#39;black&#39;,
+                               &#39;Yield (Mbases)&#39; = &#39;cadetblue&#39;, 
+                               &#39;% &gt;= Q30 bases&#39; = &#39;gold&#39;,
+                               &#39;Mean Quality Score&#39; = &#39;salmon&#39;),
+                    guide = &#39;none&#39;) +
+  theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()) +
+  facet_wrap(vars(metric), scales = &#39;free&#39;, nrow = 1)
+
+ggsave(&#39;/project/analysis/plots/scrnaseq_qc.png&#39;, width = 25, height = 15, units = &#39;cm&#39;, dpi = 300)
+
+# number of cells before/after filter
+read.table(&#39;cells_before_after_filter.txt&#39;, sep = &#39;\t&#39;, header = T) %&gt;% # table is sotred locally
+  dplyr::rename(`Cells before filter` = &#39;Cells.before.filter&#39;, # need to rename some columns that contain symbols
+         `Cells after filter` = &#39;Cells.after.filter&#39;) %&gt;%
+  reshape2::melt(id.vars = &#39;Sample&#39;,
+                 value.name = &#39;Number of cells&#39;,
+                 variable.name = &#39;metric&#39;) %&gt;% 
+  ggplot(aes(x = Sample, y = `Number of cells`, fill = Sample)) +
+  geom_bar(stat = &#39;identity&#39;) +
+  theme_bw() +
+  theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_text(hjust = 1, vjust = .5, angle = 90),) +
+  facet_grid(rows = vars(metric), scales = &#39;free&#39;) +
+  scale_fill_manual(values = c(&#39;Female_BaP&#39; = &#39;#FFBB00&#39;, &#39;Female_Ctrl&#39; = &#39;#FFEA61&#39;, &#39;Female_PCB153&#39; = &#39;#FFFFB7&#39;, 
+                         &#39;Male_BaP&#39; = &#39;#408af1&#39;, &#39;Male_Ctrl&#39; = &#39;#78b6fa&#39;, &#39;Male_PCB153&#39; = &#39;#a8d7fa&#39;, 
+                         &#39;Untr_BaP&#39; = &#39;red&#39;, &#39;Untr_Ctrl&#39; = &#39;pink&#39;))
+
+ggsave(&#39;/project/analysis/plots/cells_before_after_filter.png&#39;, width = 10, height = 15, units = &#39;cm&#39;, dpi = 300)</code></pre>
+</div>
+<div id="scrna-seq-data-analysis" class="section level1">
+<h1>scRNA-Seq data analysis</h1>
+<div id="create-seurat-object" class="section level2">
+<h2>Create Seurat object</h2>
 <pre class="r"><code>library(tidyverse)
 library(magrittr)
 library(Seurat)
@@ -382,9 +441,6 @@ set.seed(42)
 
 resolution = 0.5
 
-# main working directory
-setwd(&#39;/project/&#39;)
-dir.create(&#39;/project/analysis/plots/&#39;, showWarnings = F)
 
 # Load the dataset
 Untr_Ctrl.data = Read10X(data.dir = &#39;/project/raw_data/Untr_Ctrl/outs/filtered_feature_bc_matrix/&#39;)
@@ -458,11 +514,15 @@ p3 = VlnPlot(seurat_object, features = &#39;percent.mt&#39;) +
 
 patchwork::wrap_plots(p1, p2, p3, ncol = 3)
 ggsave(&#39;/plots/before_filter.png&#39;, width = 16, height = 8, unit = &#39;in&#39;, dpi = 300)</code></pre>
-<p>Filter for number of features (i.e. genes), count (i.e. read count
+</div>
+<div id="filter-for-number-of-features-i.e.-genes-count-i.e.-read-count-per-cell-and-percentage-of-reads-mapping-to-the-mitochondrial-genome" class="section level2">
+<h2>Filter for number of features (i.e. genes), count (i.e. read count
 per cell) and percentage of reads mapping to the mitochondrial
-genome</p>
+genome</h2>
 <pre class="r"><code>sobj = subset(sobj, subset = nFeature_RNA &gt; 1700 &amp; nFeature_RNA &lt; 10000 &amp; nCount_RNA &gt; 800 &amp; percent.mt &lt; 12.5)</code></pre>
-<p>Normalize data, run PCA and divide into clusters</p>
+</div>
+<div id="normalize-data-run-pca-and-divide-into-clusters" class="section level2">
+<h2>Normalize data, run PCA and divide into clusters</h2>
 <pre class="r"><code># normalize data
 sobj[[&#39;percent.mt&#39;]] = PercentageFeatureSet(sobj, pattern = &#39;^MT-&#39;)
 sobj = NormalizeData(sobj, normalization.method = &#39;LogNormalize&#39;, scale.factor = 10000)
@@ -489,7 +549,9 @@ clusters = Idents(sobj)
 
 sobj = RunUMAP(sobj, dims = 1:length(levels(clusters)))
 DimPlot(sobj, reduction = &#39;umap&#39;, label = T, seed = 42, group.by = &#39;seurat_clusters&#39;)</code></pre>
-<p>Annotate clusters</p>
+</div>
+<div id="annotate-clusters" class="section level2">
+<h2>Annotate clusters</h2>
 <pre class="r"><code># load gene set preparation function
 source(&#39;/project/scripts/gene_sets_prepare.R&#39;)
 # load cell type annotation function
@@ -532,8 +594,10 @@ for(j in unique(sctype_scores$cluster)){
 
 DimPlot(sobj, reduction = &#39;umap&#39;, label = TRUE, seed = 42, repel = T, group.by = c(&#39;seurat_clusters&#39;, &#39;customclassif&#39;)) 
 ggsave(&#39;/project/analysis/plots/UMAP_classification.png&#39;, width = 16, height = 8, unit = &#39;in&#39;, dpi = 300)</code></pre>
-<p>Violin plot (level of gene expression) and UMAP with overlapped
-pattern of gene expression (example)</p>
+</div>
+<div id="example-violin-plot-level-of-gene-expression-and-umap-with-overlapped-pattern-of-gene-expression" class="section level2">
+<h2>[Example] Violin plot (level of gene expression) and UMAP with
+overlapped pattern of gene expression</h2>
 <pre class="r"><code># genes of interest
 genes = c(&#39;TPO&#39;, &#39;TG&#39;, &#39;SLC5A5&#39;, &#39;IYD&#39;, &#39;PAX8&#39;, &#39;NKX2-1&#39;, &#39;FOXE1&#39;, &#39;HHEX&#39;, &#39;DUOX1&#39;, &#39;DUOX2&#39;, &#39;DUOXA1&#39;, &#39;DUOXA2&#39;, &#39;SLC16A2&#39;, &#39;DIO1&#39;, &#39;DIO2&#39;, &#39;SLC26A7&#39;)
 
@@ -549,8 +613,10 @@ ggsave(&#39;/project/analysis/plots/violin_thyroid_gene.png&#39;, width = 40, he
 
 FeaturePlot(sobj, reduction = &#39;umap&#39;, features = genes, ncol = 4) 
 FeaturePlot(sobj, reduction = &#39;umap&#39;, features = genes, split.by = &#39;sample&#39;) # one plot per sample</code></pre>
-<p>Average gene expression and percent of expressing cells (example)</p>
-<pre class="r"><code># number of cells per cluster per sample
+</div>
+<div id="samples-cell-composition" class="section level2">
+<h2>Samples cell composition</h2>
+<pre class="r"><code># number of cells per type per sample
 table(sobj@meta.data$customclassif, sobj@meta.data$sample) %&gt;% 
   as.data.frame() %&gt;% 
   transform(percentage = Freq / tapply(Freq, Var2, sum)[Var2] * 100) %&gt;% # find composition in percentage
@@ -562,10 +628,12 @@ table(sobj@meta.data$customclassif, sobj@meta.data$sample) %&gt;%
   scale_y_continuous(labels = scales::percent) +
   scale_fill_discrete(name = &#39;Cell type&#39;)
 
-ggsave(&#39;/project/analysis/plots/samples_cell_composition.png&#39;, width = 10, height = 10, unit = &#39;cm&#39;, dpi = 300)   
-
-
-# expression of hormone receptor genes per cell type
+ggsave(&#39;/project/analysis/plots/samples_cell_composition.png&#39;, width = 10, height = 10, unit = &#39;cm&#39;, dpi = 300)   </code></pre>
+</div>
+<div id="example-average-gene-expression-and-percent-of-expressing-cells" class="section level2">
+<h2>[Example] Average gene expression and percent of expressing
+cells</h2>
+<pre class="r"><code># expression of hormone receptor genes per cell type
 genes = c(&#39;ESR1&#39;, &#39;ESR2&#39;, &#39;PGR&#39;, &#39;AR&#39;)
 
 AverageExpression(sobj, features = genes, group.by = &#39;customclassif&#39;) %&gt;%
@@ -602,46 +670,10 @@ scCustomize::Percent_Expressing(sobj, features = genes, group_by = &#39;customcl
         theme(plot.title = element_text(hjust = .5))
 
 ggsave(&#39;/project/analysis/plots/percentage_expression_hormone_receptors.png&#39;, width = 15, height = 10, units = &#39;cm&#39;, dpi = 300)</code></pre>
-<p>Plot % reads mapping to ribosome genes in the Mature Thyrocytes
-cluster</p>
-<pre class="r"><code># calculate %RP
-sobj[[&#39;percent.rp&#39;]] = PercentageFeatureSet(sobj, pattern = &#39;^RP[SL]&#39;)
-
-# subset sobj for thyrocytes only 
-Mature_Thyrocytes_sobj = subset(sobj, subset = customclassif == &#39;Mature Thyrocytes&#39;) 
-
-# find min, max, median of %RP per sample
-df = data.frame(matrix(nrow = 8, ncol = 3))
-colnames(df) = c(&#39;Min&#39;, &#39;Median&#39;, &#39;Max&#39;) 
-rownames(df) = samples 
-
-for (i in 1:length(samples)) {
-    df[i, 1] = subset(Mature_Thyrocytes_sobj, subset = sample == samples[i])$percent.rp %&gt;% min 
-    df[i, 2] = subset(Mature_Thyrocytes_sobj, subset = sample == samples[i])$percent.rp %&gt;% median
-    df[i, 3] = subset(Mature_Thyrocytes_sobj, subset = sample == samples[i])$percent.rp %&gt;% max
-    }
-
-# projection on UMAP of %RP
-FeaturePlot(Mature_Thyrocytes_sobj, reduction = &#39;umap&#39;, features = &#39;percent.rp&#39;, split.by = &#39;sample&#39;) 
-ggsave(&#39;percent_RP_thyrocytes.png&#39;, height = 10, width = 90, dpi = 300, units = &#39;cm&#39;)
-
-# Violin plot of %RP
-median.stat = function(x){
-    out = quantile(x, probs = c(0.5))
-    names(out) = c(&quot;ymed&quot;)
-    return(out) 
-}
-
-VlnPlot(object = Mature_Thyrocytes_sobj, group.by = &#39;sample&#39;, features = &#39;percent.rp&#39;) + 
-    stat_summary(fun.y = median.stat, geom = &#39;crossbar&#39;) + # to add median expression as a bar
-    labs(title = &#39;&#39;, y = &#39;Percentage RP&#39;, x = &#39;Samples&#39;) +
-    scale_fill_manual(values = c(&#39;Female_BaP&#39; = &#39;#FFBB00&#39;, &#39;Female_Ctrl&#39; = &#39;#FFEA61&#39;, &#39;Female_PCB153&#39; = &#39;#FFFFB7&#39;, 
-                     &#39;Male_BaP&#39; = &#39;#408af1&#39;, &#39;Male_Ctrl&#39; = &#39;#78b6fa&#39;, &#39;Male_PCB153&#39; = &#39;#a8d7fa&#39;, 
-                     &#39;Untr_BaP&#39; = &#39;red&#39;, &#39;Untr_Ctrl&#39; = &#39;pink&#39;))
-
-ggsave(&#39;/project/analysis/plots/violin_percent_RP_thyrocytes.png&#39;, height = 15, width = 15, dpi = 300, units = &#39;cm&#39;)</code></pre>
-<p>Differential expression analysis using Seurat::FindMarkers()</p>
-<pre class="r"><code># add a col to the @meta.data that concatenates the cellType_condition
+</div>
+<div id="differential-expression-analysis-using-seuratfindmarkers" class="section level2">
+<h2>Differential expression analysis using Seurat::FindMarkers()</h2>
+<pre class="r"><code># add a col to the @meta.data that concatenates cell type and hormone treatment and EDC treatment
 sobj$cell_hormone_edc = paste(sobj@meta.data[, &#39;customclassif&#39;],
                       sobj@meta.data[, &#39;hormones&#39;],
                       sobj@meta.data[, &#39;EDC&#39;], sep = &#39;_&#39;)
@@ -663,7 +695,8 @@ test_comparisons = list(
     bapResponse_inMaleEnv = c(&#39;Mature Thyrocytes_Male_BaP&#39;, &#39;Mature Thyrocytes_Male_Ctrl&#39;),
     bapResponse_inFemaleEnv = c(&#39;Mature Thyrocytes_Female_BaP&#39;, &#39;Mature Thyrocytes_Female_Ctrl&#39;),
     PCB153Response_inMaleEnv = c(&#39;Mature Thyrocytes_Male_PCB153&#39;, &#39;Mature Thyrocytes_Male_Ctrl&#39;), 
-    PCB153Response_inFemaleEnv = c(&#39;Mature Thyrocytes_Female_PCB153&#39;, &#39;Mature Thyrocytes_Female_Ctrl&#39;))
+    PCB153Response_inFemaleEnv = c(&#39;Mature Thyrocytes_Female_PCB153&#39;, &#39;Mature Thyrocytes_Female_Ctrl&#39;)
+    )
 
 # where to store all results
 degs_all = list() # degs
@@ -694,30 +727,320 @@ for (x in 1:length(test_comparisons)) {
     num_DEGs = nrow(degs_all[[x]])
     DEG_percent = (num_DEGs/num_genes)*100
 
+    # give some info on number of tested genes and DEGs
     print(paste0(&#39;Found &#39;, num_DEGs, &#39; unique DEGs (&#39;, num_genes, &#39; genes tested) when comparing &#39;, test_comparisons[[x]][1], &#39; - &#39;, test_comparisons[[x]][2], &#39;; &#39;, round(DEG_percent, digits = 1), &#39;% is differentially expressed.&#39;))
     
-    # if want to subset a SeuratObject with only DEGs
-    #a = subset(sobj, features = rownames(filter(DEGs, p_val_adj &lt; 0.01)))
+    }
+
+# save all tested genes and DEGs in two excel files
+degs_all_save = degs_all
+
+for (x in 1:10) { # number of comparisons
+    names(degs_all_save)[x] = paste0(map_chr(str_split(test_comparisons[[x]][1], &#39;Thyrocytes_&#39;), 2), 
+                                     &#39;_VS_&#39;,
+                                     map_chr(str_split(test_comparisons[[x]][2], &#39;Thyrocytes_&#39;), 2))
+    
+    degs_all_save[[x]] %&lt;&gt;% rownames_to_column(var = &#39;gene&#39;)
 }
 
-# save all genes and DEGs in one excel file
-degs_all_save = degs_all
-for (x in 1:10) {
-    names(degs_all_save)[x] = paste0(map_chr(str_split(test_comparisons[[x]][1], &#39;Thyrocytes_&#39;), 2), 
-                    &#39;_VS_&#39;,
-                    map_chr(str_split(test_comparisons[[x]][2], &#39;Thyrocytes_&#39;), 2))
-    
-    degs_all_save[[x]] %&lt;&gt;% rownames_to_column(var = &#39;gene&#39;)}
-writexl::write_xlsx(degs_all_save, &#39;DEGs_all_comparisons.xlsx&#39;)
+writexl::write_xlsx(degs_all_save, &#39;/project/analysis/DEGs_all_comparisons.xlsx&#39;)
 
 genes_all_save = genes_all
+
+
 for (x in 1:10) {
     names(genes_all_save)[x] = paste0(map_chr(str_split(test_comparisons[[x]][1], &#39;Thyrocytes_&#39;), 2), 
-                    &#39;_VS_&#39;,
-                    map_chr(str_split(test_comparisons[[x]][2], &#39;Thyrocytes_&#39;), 2))
+                                      &#39;_VS_&#39;,
+                                      map_chr(str_split(test_comparisons[[x]][2], &#39;Thyrocytes_&#39;), 2))
     
-    genes_all_save[[x]] %&lt;&gt;% rownames_to_column(var = &#39;gene&#39;)}
-writexl::write_xlsx(genes_all_save, &#39;all_genes_all_comparisons.xlsx&#39;)</code></pre>
+    genes_all_save[[x]] %&lt;&gt;% rownames_to_column(var = &#39;gene&#39;)
+    }
+
+writexl::write_xlsx(genes_all_save, &#39;/project/analysis/all_genes_all_comparisons.xlsx&#39;)</code></pre>
+</div>
+<div id="volcano-plot-of-genes" class="section level2">
+<h2>Volcano plot of genes</h2>
+<p>Color OXPHOS, ribosomal genes and lipid transport genes</p>
+<pre class="r"><code># KEGG pathway hsa00190 “Oxidative phosphorylation” (KEGG release 107)
+oxphos = read.table(&#39;project/KEGG_PATHWAY_hsa00190_genes_31_07_2023.txt&#39;, sep = &#39;\t&#39;, header = T)
+
+# GO term “Lipid transport” (GO:0006869) 
+lipid_transport = read.table(&#39;project/GO_6869_lipid_transport.txt&#39;, header = F, sep = &#39;\t&#39;, quote = &#39;&#39;) %&gt;% 
+  filter(V12 == &#39;protein&#39;) %&gt;% 
+  pull(V1) %&gt;% 
+  unique()
+
+titles = c(&#39;Male Ctrl vs Untr Ctrl&#39;,
+    &#39;Female Ctrl vs Untr Ctrl&#39;,
+    &#39;Male Ctrl vs Female Ctrl&#39;,
+    &#39;Male BaP vs Untr BaP&#39;,
+    &#39;Female BaP vs Untr BaP&#39;,
+    &#39;Untr BaP vs Untr Ctrl&#39;,
+    &#39;Male BaP vs Male Ctrl&#39;,
+    &#39;Female BaP vs Female Ctrl&#39;,
+    &#39;Male PCB153 vs Male Ctrl&#39;)
+
+for (x in 1:length(titles)) {
+  
+    genes_all[[x]] %&gt;%
+    rownames_to_column(var = &#39;gene&#39;) %&gt;%
+    mutate(gene_category = case_when(
+        grepl(&#39;^RP[SL]&#39;, gene) &amp; p_val_adj &lt; 0.05 ~ &#39;Ribosomal protein&#39;,
+        gene %in% oxphos[oxphos$location == &#39;mitochondrial&#39;, ]$gene &amp; p_val_adj &lt; 0.05 ~ &#39;OXPHOS (mitochondrial genome)&#39;,
+        gene %in% oxphos[oxphos$location == &#39;nuclear&#39;, ]$gene &amp; p_val_adj &lt; 0.05 ~ &#39;OXPHOS (nuclear genome)&#39;,
+        gene %in% lipid_transport &amp; p_val_adj &lt; 0.05 ~ &#39;Lipid transport&#39;,
+        TRUE ~ &#39;none&#39;)) %&gt;% # all other cases 
+    ggplot(aes(x = avg_log2FC, y = -log10(p_val_adj))) +
+        geom_point(aes(colour = gene_category)) + 
+        geom_hline(yintercept = -log10(0.05), linetype = &#39;dotted&#39;, col = &#39;grey25&#39;) +
+        geom_vline(xintercept = 0, linetype = &#39;solid&#39;, col = &#39;grey25&#39;) +
+        ggrepel::geom_text_repel(data = . %&gt;% filter(gene_category == &#39;Lipid transport&#39;), aes(label = gene)) +
+        scale_color_manual(name = &#39;&#39;, 
+            values = c(&#39;chartreuse2&#39;, &#39;cadetblue1&#39;, &#39;blue&#39;, &#39;darkgoldenrod1&#39;, &#39;black&#39;), 
+            breaks = c(&#39;Ribosomal protein&#39;, &#39;OXPHOS (mitochondrial genome)&#39;, &#39;OXPHOS (nuclear genome)&#39;, &#39;Lipid transport&#39;, &#39;none&#39;), 
+            labels = c(&#39;Ribosomal gene&#39;, &#39;OXPHOS (mitochondrial genome)&#39;, &#39;OXPHOS (nuclear genome)&#39;, &#39;Lipid transport&#39;, &#39;other genes&#39;)) +
+        labs(title = titles[x], x = &#39;Average log2(Fold Change)&#39;, y = &#39;-log10(FDR)&#39;) + 
+        theme_bw() +
+        theme(plot.title = element_text(hjust = 0.5)) +
+        xlim(c(-1.7, 1.8))
+  
+  ggsave(paste0(&#39;/project/analysis/plots/Volcano_&#39;, titles[x] ,&#39;.png&#39;), width = 10, height = 15, units = &#39;cm&#39;, dpi = 300)
+  
+  } </code></pre>
+</div>
+<div id="example-gene-ontology-go-analysis" class="section level2">
+<h2>[Example] Gene Ontology (GO) analysis</h2>
+<pre class="r"><code># clusterProfiler 
+
+ontology = &#39;BP&#39;
+
+go_analysis = function(DEG_LIST, i, ...) {
+  
+    gene_list = bitr(rownames(DEG_LIST), fromType = &#39;SYMBOL&#39;, toType = &#39;ENTREZID&#39;, OrgDb = &#39;org.Hs.eg.db&#39;)
+
+    # if some genes failed to map, report it
+    print(&#39;These genes failed to map: &#39;)
+    print(DEG_LIST[rownames(DEG_LIST) %notin% gene_list$SYMBOL, 1:2])
+
+    x = enrichGO(gene = gene_list$ENTREZ, 
+             OrgDb = org.Hs.eg.db,
+             qvalueCutoff = 0.01,
+             pvalueCutoff = 0.01,
+             ont = ontology, 
+             readable = TRUE)  
+
+    x = clusterProfiler::simplify(x, by = &#39;qvalue&#39;) 
+
+    npathway = x@result%&gt;% 
+        as.data.frame %&gt;% 
+        filter(qvalue &lt; 0.01) %&gt;% 
+        nrow() 
+
+    print(paste0(&#39;Enriched GO pathways: &#39;, npathway))
+    
+    # also, save results as a table 
+    x@result %&gt;% 
+        as.data.frame %&gt;% 
+        filter(qvalue &lt; 0.01) %&gt;% 
+        write.csv(., paste(&#39;project/analysis/GO&#39;, ontology, &#39;simplified&#39;, test_comparisons[[i]][1], test_comparisons[[i]][2], ..., &#39;qvalue_0.01.csv&#39;, sep = &#39;_&#39;))
+    
+    return(x)
+    
+}
+
+go_male_vs_untr = go_analysis(degs_all[[1]], 1)</code></pre>
+</div>
+<div id="example-emap-plot-and-heatplot" class="section level2">
+<h2>[Example] Emap plot and heatplot</h2>
+<pre class="r"><code># emap plot
+emapplot(go_male_vs_untr, color = &#39;qvalue&#39;, pie.params = list(pie = &#39;count&#39;), cex.params = list(category_node = 1)) + 
+    scale_fill_continuous(low = &#39;blue&#39;, high = &#39;grey90&#39;, name = &#39;qvalue&#39;) +
+    theme(plot.title = element_text(face = &#39;bold&#39;, hjust = .5)) + 
+    ggtitle(titles[1])
+
+ggsave(paste0(&#39;emapplot_GO_&#39;, ontology, &#39;_&#39;, titles[1], &#39;.png&#39;), dpi = 300, units = &#39;cm&#39;, width = 25, height = 20, bg = &#39;white&#39;)
+
+# define function for coloring based on log2(fold change)
+heatplot_fc = function(DEG_LIST) {
+  
+  gene_fc = DEG_LIST$avg_log2FC
+  names(gene_fc) = rownames(DEG_LIST)
+  return(gene_fc)
+  
+  }
+
+# heatplot
+heatplot(go_male_vs_untr, foldChange = heatplot_fc(degs_all[[1]])) + 
+    ggtitle(paste(titles[1], &#39;- GO Biological Process&#39;)) +
+    theme(plot.title = element_text(face = &#39;bold&#39;, hjust = .5)) 
+
+ggsave(paste0(&#39;heatplot_GO_&#39;, ontology, &#39;_&#39;, titles[1], &#39;.png&#39;), width = 25, height = 15, dpi = 300, units = &#39;cm&#39;, bg = &#39;white&#39;)</code></pre>
+</div>
+<div id="fold-change-of-ahr-and-its-target-genes" class="section level2">
+<h2>Fold change of AHR and its target genes</h2>
+<p>N.B.: only in the comparisons Untr BaP vs Untr Ctrl, Male BaP vs Male
+Ctrl, Female BaP vs Female Ctrl</p>
+<pre class="r"><code>mylist = list()
+
+# extract genes only if they are DEGs
+for (i in 1:3) { 
+    print(i)        
+    mylist[[i]] = degs_all[[i+5]] %&gt;% filter(grepl(&#39;CYP1|NQO1|ALDH3|TIPARP|AHR&#39;, rownames(.))) 
+    names(mylist)[[i]] = titles[i+5] # interested in comparisons 6, 7, 8
+}
+
+mylist
+# $`Untr BaP vs Untr Ctrl`
+#               p_val avg_log2FC pct.1 pct.2    p_val_adj
+# CYP1B1 2.121654e-21  0.7621296 0.439 0.068 7.765465e-17
+# NQO1   4.166497e-07  0.5565888 0.735 0.633 1.524980e-02
+# 
+# $`Male BaP vs Male Ctrl`
+#               p_val avg_log2FC pct.1 pct.2    p_val_adj
+# CYP1B1 8.545337e-19  0.8081897 0.458 0.126 3.127679e-14
+# CYP1A1 2.905552e-13  0.3147409 0.228 0.009 1.063461e-08
+# NQO1   5.812601e-10  0.5464255 0.707 0.604 2.127470e-05
+# 
+# $`Female BaP vs Female Ctrl`
+#               p_val avg_log2FC pct.1 pct.2    p_val_adj
+# CYP1B1 3.898564e-16  1.5897009 0.544 0.080 1.426914e-11
+# CYP1A1 5.454316e-09  1.1776597 0.262 0.000 1.996334e-04
+# NQO1   3.050631e-07  0.8004275 0.725 0.554 1.116561e-02
+
+
+# add column with comparison name
+for (i in 1:3) { 
+    mylist[[i]]$Comparison = names(mylist)[i] 
+    mylist[[i]] %&lt;&gt;% rownames_to_column(var = &#39;Gene&#39;) 
+    }
+
+mylist
+# $`Untr BaP vs Untr Ctrl`
+#     Gene        p_val avg_log2FC pct.1 pct.2    p_val_adj            Comparison
+# 1 CYP1B1 2.121654e-21  0.7621296 0.439 0.068 7.765465e-17 Untr BaP vs Untr Ctrl
+# 2   NQO1 4.166497e-07  0.5565888 0.735 0.633 1.524980e-02 Untr BaP vs Untr Ctrl
+# 
+# $`Male BaP vs Male Ctrl`
+#     Gene        p_val avg_log2FC pct.1 pct.2    p_val_adj            Comparison
+# 1 CYP1B1 8.545337e-19  0.8081897 0.458 0.126 3.127679e-14 Male BaP vs Male Ctrl
+# 2 CYP1A1 2.905552e-13  0.3147409 0.228 0.009 1.063461e-08 Male BaP vs Male Ctrl
+# 3   NQO1 5.812601e-10  0.5464255 0.707 0.604 2.127470e-05 Male BaP vs Male Ctrl
+# 
+# $`Female BaP vs Female Ctrl`
+#     Gene        p_val avg_log2FC pct.1 pct.2    p_val_adj                Comparison
+# 1 CYP1B1 3.898564e-16  1.5897009 0.544 0.080 1.426914e-11 Female BaP vs Female Ctrl
+# 2 CYP1A1 5.454316e-09  1.1776597 0.262 0.000 1.996334e-04 Female BaP vs Female Ctrl
+# 3   NQO1 3.050631e-07  0.8004275 0.725 0.554 1.116561e-02 Female BaP vs Female Ctrl
+
+# make single dataframe and plot
+rbind(mylist[[1]], mylist[[2]], mylist[[3]]) %&gt;%
+    ggplot(aes(x = Gene, y = avg_log2FC, fill = Comparison)) +
+    geom_bar(stat = &#39;identity&#39;, position = position_dodge2(preserve = &#39;single&#39;)) +
+    scale_fill_manual(name = &#39;Comparison&#39;,
+              values = c(&#39;#f37d80&#39;, &#39;#777aba&#39;, &#39;#feea7f&#39;),
+              labels = c(&#39;Untr BaP vs Untr Ctrl&#39;, &#39;Male BaP vs Male Ctrl&#39;, &#39;Female BaP vs Female Ctrl&#39;),
+              breaks = c(&#39;Untr BaP vs Untr Ctrl&#39;, &#39;Male BaP vs Male Ctrl&#39;, &#39;Female BaP vs Female Ctrl&#39;)) +
+    theme_bw() +
+    labs(y = &#39;Average log2(Fold Change)&#39;, title = &#39;Mature Thyrocytes&#39;) +
+    theme(plot.title = element_text(hjust = 0.5))
+
+ggsave(&#39;project/analysis/plots/fc_AHR_and_targets.png&#39;, width = 10, height = 10, dpi = 300, units = &#39;cm&#39;)</code></pre>
+</div>
+<div id="plot-reads-mapping-to-ribosome-genes-in-the-mature-thyrocytes-cluster" class="section level2">
+<h2>Plot % reads mapping to ribosome genes in the Mature Thyrocytes
+cluster</h2>
+<pre class="r"><code># calculate %RP
+sobj[[&#39;percent.rp&#39;]] = PercentageFeatureSet(sobj, pattern = &#39;^RP[SL]&#39;)
+
+# subset sobj for thyrocytes only 
+Mature_Thyrocytes_sobj = subset(sobj, subset = customclassif == &#39;Mature Thyrocytes&#39;) 
+
+# find min, max, median of %RP per sample
+df = data.frame(matrix(nrow = 8, ncol = 3))
+colnames(df) = c(&#39;Min&#39;, &#39;Median&#39;, &#39;Max&#39;) 
+rownames(df) = samples 
+
+for (i in 1:length(samples)) {
+    df[i, 1] = subset(Mature_Thyrocytes_sobj, subset = sample == samples[i])$percent.rp %&gt;% min 
+    df[i, 2] = subset(Mature_Thyrocytes_sobj, subset = sample == samples[i])$percent.rp %&gt;% median
+    df[i, 3] = subset(Mature_Thyrocytes_sobj, subset = sample == samples[i])$percent.rp %&gt;% max
+    }
+
+# projection on UMAP of %RP
+FeaturePlot(Mature_Thyrocytes_sobj, reduction = &#39;umap&#39;, features = &#39;percent.rp&#39;, split.by = &#39;sample&#39;) 
+ggsave(&#39;percent_RP_thyrocytes.png&#39;, height = 10, width = 90, dpi = 300, units = &#39;cm&#39;)
+
+# Violin plot of %RP
+median.stat = function(x){
+    out = quantile(x, probs = c(0.5))
+    names(out) = c(&#39;ymed&#39;)
+    return(out) 
+}
+
+VlnPlot(object = Mature_Thyrocytes_sobj, group.by = &#39;sample&#39;, features = &#39;percent.rp&#39;) + 
+    stat_summary(fun.y = median.stat, geom = &#39;crossbar&#39;) + # to add median expression as a bar
+    labs(title = &#39;&#39;, y = &#39;Percentage RP&#39;, x = &#39;Samples&#39;) +
+    scale_fill_manual(values = c(&#39;Female_BaP&#39; = &#39;#FFBB00&#39;, &#39;Female_Ctrl&#39; = &#39;#FFEA61&#39;, &#39;Female_PCB153&#39; = &#39;#FFFFB7&#39;, 
+                     &#39;Male_BaP&#39; = &#39;#408af1&#39;, &#39;Male_Ctrl&#39; = &#39;#78b6fa&#39;, &#39;Male_PCB153&#39; = &#39;#a8d7fa&#39;, 
+                     &#39;Untr_BaP&#39; = &#39;red&#39;, &#39;Untr_Ctrl&#39; = &#39;pink&#39;))
+
+ggsave(&#39;/project/analysis/plots/violin_percent_RP_thyrocytes.png&#39;, height = 15, width = 15, dpi = 300, units = &#39;cm&#39;)</code></pre>
+</div>
+<div id="test-difference-in-rp-among-the-samples-mature-thyrocytes-subpopulation" class="section level2">
+<h2>Test difference in %RP among the samples Mature Thyrocytes
+subpopulation</h2>
+<pre class="r"><code>a = VlnPlot(Mature_Thyrocytes_sobj, features = &#39;percent.rp&#39;, group.by = &#39;sample&#39;)
+
+rp_thyrocytes = list()
+
+# extract %RP 
+for (i in 1:8) { 
+    print(samples[i])       
+    rp_thyrocytes[[i]] = filter(a$data, ident == samples[i]) %&gt;% pull(percent.rp)
+    names(rp_thyrocytes)[[i]] = samples[i]
+}
+
+# check if samples are normally distributed - they are not
+for (i in 1:8) { 
+    print(names(samples)[i])        
+    shap = shapir o.test(rp_thyrocytes[[i]])
+    summary(shap)
+}
+
+# kruskal-wallis test (non-parametric equivalent of ANOVA)
+kruskal.test(a$data$percent.rp ~ a$data$ident, a$data)
+
+# post-hoc test
+FSA::dunnTest(a$data$percent.rp ~ a$data$ident, a$data, method = &#39;bh&#39;)</code></pre>
+</div>
+<div id="overlap-of-degs-among-comparisons-untr-bap-vs-untr-ctrl-male-bap-vs-male-ctrl-female-bap-vs-female-ctrl" class="section level2">
+<h2>Overlap of DEGs among comparisons Untr BaP vs Untr Ctrl, Male BaP vs
+Male Ctrl, Female BaP vs Female Ctrl</h2>
+<pre class="r"><code># degs_all[[6]] = Untr BaP vs Untr Ctrl
+# degs_all[[7]] = Male BaP vs Male Ctrl
+# degs_all[[8]] = Female BaP vs Female Ctrl 
+
+data.frame(all_genes_venn = unique(c(rownames(degs_all[[6]]), 
+                                     rownames(degs_all[[7]]),
+                                     rownames(degs_all[[8]])))) %&gt;%
+  mutate(venn6 = if_else(all_genes_venn %in% rownames(degs_all[[6]]), T, F),
+         venn7 = if_else(all_genes_venn %in% rownames(degs_all[[7]]), T, F),
+     venn8 = if_else(all_genes_venn %in% rownames(degs_all[[8]]), T, F)) %&gt;%
+  ggplot() +
+  geom_venn(aes(A = venn6, B = venn7, C = venn8), 
+                    show_percentage = FALSE,
+                    set_names = c(paste0(&#39;Untr BaP vs Untr Ctrl\n(&#39;, nrow(degs_all[[6]]), &#39;)&#39;), 
+                                  paste0(&#39;Male BaP vs Male Ctrl\n(&#39;, nrow(degs_all[[7]]), &#39;)&#39;),
+                                  paste0(&#39;Female BaP vs Female Ctrl\n(&#39;, nrow(degs_all[[8]]), &#39;)&#39;)),
+                    fill_color = c(&#39;red&#39;, &#39;blue&#39;, &#39;gold&#39;),
+                    fill_alpha = 0.5,
+                    stroke_size = 0.7,
+                    text_size = 5.5) +
+  coord_fixed() +
+  theme_void()
+ggsave(&#39;project/analysis/plots/BAP_DEGs.png&#39;, width = 15, height = 15, units = &#39;cm&#39;, dpi = 300, bg = &#39;white&#39;)</code></pre>
+</div>
+</div>
 
 
 
