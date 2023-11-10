@@ -853,7 +853,9 @@ go_male_vs_untr = go_analysis(degs_all[[1]], 1)</code></pre>
 <div id="example-emap-plot-and-heatplot" class="section level2">
 <h2>[Example] Emap plot and heatplot</h2>
 <pre class="r"><code># emap plot
-emapplot(go_male_vs_untr, color = &#39;qvalue&#39;, pie.params = list(pie = &#39;count&#39;), cex.params = list(category_node = 1)) + 
+go_male_vs_untr_EMAP = pairwise_termsim(go_male_vs_untr)
+
+emapplot(go_male_vs_untr_EMAP, color = &#39;qvalue&#39;, pie.params = list(pie = &#39;count&#39;), cex.params = list(category_node = 1)) + 
     scale_fill_continuous(low = &#39;blue&#39;, high = &#39;grey90&#39;, name = &#39;qvalue&#39;) +
     theme(plot.title = element_text(face = &#39;bold&#39;, hjust = .5)) + 
     ggtitle(titles[1])
