@@ -516,7 +516,10 @@ go_male_vs_untr = go_analysis(degs_all[[1]], 1)
 ## [Example] Emap plot and heatplot
 ```{r, echo = T, eval = F}
 # emap plot
-emapplot(go_male_vs_untr, color = 'qvalue', pie.params = list(pie = 'count'), cex.params = list(category_node = 1)) + 
+
+go_male_vs_untr_EMAP = pairwise_termsim(go_male_vs_untr)
+
+emapplot(go_male_vs_untr_EMAP, color = 'qvalue', pie.params = list(pie = 'count'), cex.params = list(category_node = 1)) + 
 	scale_fill_continuous(low = 'blue', high = 'grey90', name = 'qvalue') +
 	theme(plot.title = element_text(face = 'bold', hjust = .5)) + 
 	ggtitle(titles[1])
