@@ -369,28 +369,35 @@ dir.create(&#39;/project/analysis/plots/&#39;, showWarnings = F)</code></pre>
 <pre class="r"><code># sequenced reads
 read.table(&#39;/project/sequencing_qc.txt&#39;, sep = &#39;\t&#39;, header = T) %&gt;% # this table is stored locally
   rename(`Number of cells` = &#39;Number.of.cells&#39;, # need to rename some columns that contain symbols
-         `Yield (Mbases)` = &#39;yield..Mbases.&#39;, 
+         `Number of Reads, x10^6` = &#39;Number.of.Reads..x10.6&#39;, 
+         `Library Size, MBases` = &#39;Library.Size..MBases&#39;, 
          `% &gt;= Q30 bases` = &#39;X.....Q30.bases&#39;,
-         `Mean Quality Score` = &#39;Mean.Quality.Score&#39;) %&gt;%
+         `Mean Quality Score` = &#39;Mean.Quality.Score&#39;,
+         `Median Genes per Cell` = &#39;Median.Genes.per.Cell&#39;,
+         `Sequencing Saturation, %` = &#39;Sequencing.Saturation...&#39;,
+         `Reads Mapped Confidently to Genome, %` = &#39;Reads.Mapped.Confidently.to.Genome...&#39;,
+         `Median Reads per Cell` = &#39;Mean.Reads.per.Cell&#39;) %&gt;%
+  dplyr::select(-`Library Size, MBases`) %&gt;% 
   reshape2::melt(id.vars = &#39;Sample&#39;,
                  value.name = &#39;value&#39;,
                  variable.name = &#39;metric&#39;) %&gt;% 
-  ggplot(aes(x = 1, y = value)) +
+  ggplot(aes(x = value, y = 1)) +
   geom_boxplot(aes(fill = metric), alpha = .3) +
-  geom_point() +   
-  ggrepel::geom_label_repel(aes(label = Sample), nudge_x = 0.3, direction = &#39;y&#39;) +
+  geom_point() +  
+  ggrepel::geom_text_repel(aes(label = Sample), 
+                           segment.alpha = .5, 
+                           size = 3, 
+                           point.padding = .1,
+                           min.segment.length = 0) +
   theme_bw() +
   labs(x = &#39;&#39;, y = &#39;&#39;) +
-  scale_fill_manual(values = c(&#39;Number of cells&#39; = &#39;black&#39;,
-                               &#39;Yield (Mbases)&#39; = &#39;cadetblue&#39;, 
-                               &#39;% &gt;= Q30 bases&#39; = &#39;gold&#39;,
-                               &#39;Mean Quality Score&#39; = &#39;salmon&#39;),
-                    guide = &#39;none&#39;) +
-  theme(axis.ticks.x = element_blank(),
-        axis.text.x = element_blank()) +
-  facet_wrap(vars(metric), scales = &#39;free&#39;, nrow = 1)
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank()) +
+  scale_x_continuous(labels = scales::label_comma()) +
+  facet_wrap(vars(metric), scales = &#39;free&#39;, ncol = 2, nrow = 4) +
+  guides(fill = &#39;none&#39;)
 
-ggsave(&#39;/project/analysis/plots/scrnaseq_qc.png&#39;, width = 25, height = 15, units = &#39;cm&#39;, dpi = 300)
+ggsave(&#39;/project/analysis/plots/scrnaseq_qc.png&#39;, width = 20, height = 15, units = &#39;cm&#39;, dpi = 300)
 
 # number of cells before/after filter
 read.table(&#39;cells_before_after_filter.txt&#39;, sep = &#39;\t&#39;, header = T) %&gt;% # table is sotred locally
@@ -853,6 +860,7 @@ go_male_vs_untr = go_analysis(degs_all[[1]], 1)</code></pre>
 <div id="example-emap-plot-and-heatplot" class="section level2">
 <h2>[Example] Emap plot and heatplot</h2>
 <pre class="r"><code># emap plot
+
 go_male_vs_untr_EMAP = pairwise_termsim(go_male_vs_untr)
 
 emapplot(go_male_vs_untr_EMAP, color = &#39;qvalue&#39;, pie.params = list(pie = &#39;count&#39;), cex.params = list(category_node = 1)) + 
