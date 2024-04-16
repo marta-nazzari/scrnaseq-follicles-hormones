@@ -20,28 +20,35 @@ dir.create('/project/analysis/plots/', showWarnings = F)
 # sequenced reads
 read.table('/project/sequencing_qc.txt', sep = '\t', header = T) %>% # this table is stored locally
   rename(`Number of cells` = 'Number.of.cells', # need to rename some columns that contain symbols
-         `Yield (Mbases)` = 'yield..Mbases.', 
+         `Number of Reads, x10^6` = 'Number.of.Reads..x10.6', 
+         `Library Size, MBases` = 'Library.Size..MBases', 
          `% >= Q30 bases` = 'X.....Q30.bases',
-         `Mean Quality Score` = 'Mean.Quality.Score') %>%
+         `Mean Quality Score` = 'Mean.Quality.Score',
+         `Median Genes per Cell` = 'Median.Genes.per.Cell',
+         `Sequencing Saturation, %` = 'Sequencing.Saturation...',
+         `Reads Mapped Confidently to Genome, %` = 'Reads.Mapped.Confidently.to.Genome...',
+         `Median Reads per Cell` = 'Mean.Reads.per.Cell') %>%
+  dplyr::select(-`Library Size, MBases`) %>% 
   reshape2::melt(id.vars = 'Sample',
                  value.name = 'value',
                  variable.name = 'metric') %>% 
-  ggplot(aes(x = 1, y = value)) +
+  ggplot(aes(x = value, y = 1)) +
   geom_boxplot(aes(fill = metric), alpha = .3) +
-  geom_point() +   
-  ggrepel::geom_label_repel(aes(label = Sample), nudge_x = 0.3, direction = 'y') +
+  geom_point() +  
+  ggrepel::geom_text_repel(aes(label = Sample), 
+                           segment.alpha = .5, 
+                           size = 3, 
+                           point.padding = .1,
+                           min.segment.length = 0) +
   theme_bw() +
   labs(x = '', y = '') +
-  scale_fill_manual(values = c('Number of cells' = 'black',
-                               'Yield (Mbases)' = 'cadetblue', 
-                               '% >= Q30 bases' = 'gold',
-                               'Mean Quality Score' = 'salmon'),
-                    guide = 'none') +
-  theme(axis.ticks.x = element_blank(),
-        axis.text.x = element_blank()) +
-  facet_wrap(vars(metric), scales = 'free', nrow = 1)
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank()) +
+  scale_x_continuous(labels = scales::label_comma()) +
+  facet_wrap(vars(metric), scales = 'free', ncol = 2, nrow = 4) +
+  guides(fill = 'none')
 
-ggsave('/project/analysis/plots/scrnaseq_qc.png', width = 25, height = 15, units = 'cm', dpi = 300)
+ggsave('/project/analysis/plots/scrnaseq_qc.png', width = 20, height = 15, units = 'cm', dpi = 300)
 
 # number of cells before/after filter
 read.table('cells_before_after_filter.txt', sep = '\t', header = T) %>% # table is sotred locally
