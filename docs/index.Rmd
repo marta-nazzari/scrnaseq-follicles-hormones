@@ -7,15 +7,20 @@ output: html_document
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-## Set up working directory and create analysis subfolders 
+
+## Set up working directory and create analysis subfolders
+
 ```{r, echo = T, eval = F}
 # main working directory
 setwd('/project/')
 dir.create('/project/analysis/', showWarnings = F)
 dir.create('/project/analysis/plots/', showWarnings = F)
 ```
+
 \n\n\n
+
 # scRNA-Seq dataset stats
+
 ```{r, echo = T, eval = F}
 # sequenced reads
 read.table('/project/sequencing_qc.txt', sep = '\t', header = T) %>% # this table is stored locally
@@ -69,9 +74,13 @@ read.table('cells_before_after_filter.txt', sep = '\t', header = T) %>% # table 
 
 ggsave('/project/analysis/plots/cells_before_after_filter.png', width = 10, height = 15, units = 'cm', dpi = 300)
 ```
+
 \n\n\n
+
 # scRNA-Seq data analysis
-## Create Seurat object 
+
+## Create Seurat object
+
 ```{r, echo = T, eval = F}
 library(tidyverse)
 library(magrittr)
@@ -173,13 +182,19 @@ p3 = VlnPlot(seurat_object, features = 'percent.mt') +
 patchwork::wrap_plots(p1, p2, p3, ncol = 3)
 ggsave('/plots/before_filter.png', width = 16, height = 8, unit = 'in', dpi = 300)
 ```
+
 \n\n\n
+
 ## Filter for number of features (i.e. genes), count (i.e. read count per cell) and percentage of reads mapping to the mitochondrial genome
+
 ```{r, echo = T, eval = F}
 sobj = subset(sobj, subset = nFeature_RNA > 1700 & nFeature_RNA < 10000 & nCount_RNA > 800 & percent.mt < 12.5)
 ```
+
 \n\n\n
+
 ## Normalize data, run PCA and divide into clusters
+
 ```{r, echo = T, eval = F}
 # normalize data
 sobj[['percent.mt']] = PercentageFeatureSet(sobj, pattern = '^MT-')
@@ -208,8 +223,11 @@ clusters = Idents(sobj)
 sobj = RunUMAP(sobj, dims = 1:length(levels(clusters)))
 DimPlot(sobj, reduction = 'umap', label = T, seed = 42, group.by = 'seurat_clusters')
 ```
+
 \n\n\n
+
 ## Annotate clusters
+
 ```{r, echo = T, eval = F}
 # load gene set preparation function
 source('/project/scripts/gene_sets_prepare.R')
@@ -255,8 +273,11 @@ DimPlot(sobj, reduction = 'umap', label = TRUE, seed = 42, repel = T, group.by =
 ggsave('/project/analysis/plots/UMAP_classification.png', width = 16, height = 8, unit = 'in', dpi = 300)
 
 ```
+
 \n\n\n
+
 ## [Example] Violin plot (level of gene expression) and UMAP with overlapped pattern of gene expression
+
 ```{r, echo = T, eval = F}
 # genes of interest
 genes = c('TPO', 'TG', 'SLC5A5', 'IYD', 'PAX8', 'NKX2-1', 'FOXE1', 'HHEX', 'DUOX1', 'DUOX2', 'DUOXA1', 'DUOXA2', 'SLC16A2', 'DIO1', 'DIO2', 'SLC26A7')
@@ -274,8 +295,11 @@ ggsave('/project/analysis/plots/violin_thyroid_gene.png', width = 40, height = 4
 FeaturePlot(sobj, reduction = 'umap', features = genes, ncol = 4) 
 FeaturePlot(sobj, reduction = 'umap', features = genes, split.by = 'sample') # one plot per sample
 ```
+
 \n\n\n
+
 ## Samples cell composition
+
 ```{r, echo = T, eval = F}
 # number of cells per type per sample
 table(sobj@meta.data$customclassif, sobj@meta.data$sample) %>% 
@@ -292,8 +316,11 @@ table(sobj@meta.data$customclassif, sobj@meta.data$sample) %>%
 ggsave('/project/analysis/plots/samples_cell_composition.png', width = 10, height = 10, unit = 'cm', dpi = 300)   
 
 ```
+
 \n\n\n
+
 ## [Example] Average gene expression and percent of expressing cells
+
 ```{r, echo = T, eval = F}
 # expression of hormone receptor genes per cell type
 genes = c('ESR1', 'ESR2', 'PGR', 'AR')
@@ -333,8 +360,11 @@ scCustomize::Percent_Expressing(sobj, features = genes, group_by = 'customclassi
 
 ggsave('/project/analysis/plots/percentage_expression_hormone_receptors.png', width = 15, height = 10, units = 'cm', dpi = 300)
 ```
+
 \n\n\n
+
 ## Differential expression analysis using Seurat::FindMarkers()
+
 ```{r, echo = T, eval = F}
 # add a col to the @meta.data that concatenates cell type and hormone treatment and EDC treatment
 sobj$cell_hormone_edc = paste(sobj@meta.data[, 'customclassif'],
@@ -370,7 +400,7 @@ for (x in 1:length(test_comparisons)) {
 	print(paste0('Comparing ', test_comparisons[[x]][1], ' VS ', test_comparisons[[x]][2]))
 
 	# find DEGs
-	all_genes = FindMarkers(Mature_Thyrocytes_sobj, ident.1 = test_comparisons[[x]][1], ident.2 = test_comparisons[[x]][2], group.by = 'cell_hormone_edc')
+	all_genes = FindMarkers(Mature_Thyrocytes_sobj, ident.1 = test_comparisons[[x]][1], ident.2 = test_comparisons[[x]][2], group.by = 'cell_hormone_edc', logfc.threshold = 0.25, test.use = "wilcox", min.pct = 0.1, min.cells.feature = 3, min.cells.group = 3, base = 2)
 	
 	# assign DEGs results to list that collects them all
 	degs_all[[x]] = filter(all_genes, p_val_adj < FDR)
@@ -422,9 +452,13 @@ for (x in 1:10) {
 writexl::write_xlsx(genes_all_save, '/project/analysis/all_genes_all_comparisons.xlsx')
 
 ```
+
 \n\n\n
+
 ## Volcano plot of genes
+
 Color OXPHOS, ribosomal genes and lipid transport genes
+
 ```{r, echo = T, eval = F}
 # KEGG pathway hsa00190 “Oxidative phosphorylation” (KEGG release 107)
 oxphos = read.table('project/KEGG_PATHWAY_hsa00190_genes_31_07_2023.txt', sep = '\t', header = T)
@@ -474,8 +508,11 @@ for (x in 1:length(titles)) {
   } 
 
 ```
+
 \n\n\n
+
 ## [Example] Gene Ontology (GO) analysis
+
 ```{r, echo = T, eval = F}
 # clusterProfiler 
 
@@ -520,7 +557,9 @@ go_male_vs_untr = go_analysis(degs_all[[1]], 1)
 ```
 
 \n\n\n
+
 ## [Example] Emap plot and heatplot
+
 ```{r, echo = T, eval = F}
 # emap plot
 
@@ -550,9 +589,13 @@ heatplot(go_male_vs_untr, foldChange = heatplot_fc(degs_all[[1]])) +
 ggsave(paste0('heatplot_GO_', ontology, '_', titles[1], '.png'), width = 25, height = 15, dpi = 300, units = 'cm', bg = 'white')
 
 ```
+
 \n\n\n
+
 ## Fold change of AHR and its target genes
-N.B.: only in the comparisons Untr BaP vs Untr Ctrl, Male BaP vs Male Ctrl, Female BaP vs Female Ctrl 
+
+N.B.: only in the comparisons Untr BaP vs Untr Ctrl, Male BaP vs Male Ctrl, Female BaP vs Female Ctrl
+
 ```{r, echo = T, eval = F}
 mylist = list()
 
@@ -622,8 +665,11 @@ ggsave('project/analysis/plots/fc_AHR_and_targets.png', width = 10, height = 10,
 
 
 ```
+
 \n\n\n
+
 ## Plot % reads mapping to ribosome genes in the Mature Thyrocytes cluster
+
 ```{r, echo = T, eval = F}
 # calculate %RP
 sobj[['percent.rp']] = PercentageFeatureSet(sobj, pattern = '^RP[SL]')
@@ -664,8 +710,11 @@ ggsave('/project/analysis/plots/violin_percent_RP_thyrocytes.png', height = 15, 
 
 
 ```
+
 \n\n\n
+
 ## Test difference in %RP among the samples Mature Thyrocytes subpopulation
+
 ```{r, echo = T, eval = F}
 a = VlnPlot(Mature_Thyrocytes_sobj, features = 'percent.rp', group.by = 'sample')
 
@@ -691,8 +740,11 @@ kruskal.test(a$data$percent.rp ~ a$data$ident, a$data)
 # post-hoc test
 FSA::dunnTest(a$data$percent.rp ~ a$data$ident, a$data, method = 'bh')
 ```
+
 \n\n\n
-## Overlap of DEGs among comparisons Untr BaP vs Untr Ctrl, Male BaP vs Male Ctrl, Female BaP vs Female Ctrl 
+
+## Overlap of DEGs among comparisons Untr BaP vs Untr Ctrl, Male BaP vs Male Ctrl, Female BaP vs Female Ctrl
+
 ```{r, echo = T, eval = F}
 # degs_all[[6]] = Untr BaP vs Untr Ctrl
 # degs_all[[7]] = Male BaP vs Male Ctrl

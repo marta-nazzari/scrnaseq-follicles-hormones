@@ -714,7 +714,7 @@ for (x in 1:length(test_comparisons)) {
     print(paste0(&#39;Comparing &#39;, test_comparisons[[x]][1], &#39; VS &#39;, test_comparisons[[x]][2]))
 
     # find DEGs
-    all_genes = FindMarkers(Mature_Thyrocytes_sobj, ident.1 = test_comparisons[[x]][1], ident.2 = test_comparisons[[x]][2], group.by = &#39;cell_hormone_edc&#39;)
+    all_genes = FindMarkers(Mature_Thyrocytes_sobj, ident.1 = test_comparisons[[x]][1], ident.2 = test_comparisons[[x]][2], group.by = &#39;cell_hormone_edc&#39;, logfc.threshold = 0.25, test.use = &quot;wilcox&quot;, min.pct = 0.1, min.cells.feature = 3, min.cells.group = 3, base = 2)
     
     # assign DEGs results to list that collects them all
     degs_all[[x]] = filter(all_genes, p_val_adj &lt; FDR)
