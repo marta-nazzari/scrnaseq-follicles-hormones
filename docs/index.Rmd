@@ -4,15 +4,21 @@ author: Marta Nazzari
 output: 
   html_document:
     toc: true
+    number_sections: true  
+    theme: united
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+\n
+
 Markdown document collecting the code used in the paper by Nazzari, M., Romitti, M., Kip, A. M., Kamps, R., Costagliola, S., van de Beucken, T., Moroni, L., & Caiment, F. (2024) **Impact of benzo[a]pyrene, PCB153 and sex hormones on human ESC-derived thyroid follicles using single cell transcriptomics**. *Environment International*, *188*, 108748. <https://doi.org/10.1016/j.envint.2024.108748>
 
-## Set up working directory and create analysis subfolders
+\n\n\n
+
+# Set up working directory and create analysis subfolders
 
 ```{r, echo = T, eval = F}
 # main working directory
