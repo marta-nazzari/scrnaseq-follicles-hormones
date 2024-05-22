@@ -1,12 +1,14 @@
 ---
-title: 'Impact of Endocrine Disrupting Chemicals and Sex Hormones on Human ESC-Derived Thyroid Follicles Using Single Cell Transcriptomics'
-author: 'author: Marta Nazzari'
+title: 'Impact of benzo[a]pyrene, PCB153 and sex hormones on human ESC-Derived thyroid follicles using single cell transcriptomics'
+author: Marta Nazzari
 output: html_document
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+Markdown document collecting the code used in the paper by Nazzari, M., Romitti, M., Kip, A. M., Kamps, R., Costagliola, S., van de Beucken, T., Moroni, L., & Caiment, F. (2024) **Impact of benzo[a]pyrene, PCB153 and sex hormones on human ESC-derived thyroid follicles using single cell transcriptomics**. *Environment International*, *188*, 108748. <https://doi.org/10.1016/j.envint.2024.108748>
 
 ## Set up working directory and create analysis subfolders
 
