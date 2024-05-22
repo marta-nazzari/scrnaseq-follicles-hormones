@@ -1,7 +1,9 @@
 ---
 title: 'Impact of benzo[a]pyrene, PCB153 and sex hormones on human ESC-Derived thyroid follicles using single cell transcriptomics'
 author: Marta Nazzari
-output: html_document
+output: 
+  html_document:
+    toc: true
 ---
 
 ```{r setup, include = FALSE}

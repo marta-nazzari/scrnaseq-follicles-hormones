@@ -356,6 +356,49 @@ transcriptomics</h1>
 
 </div>
 
+<div id="TOC">
+<ul>
+<li><a href="#set-up-working-directory-and-create-analysis-subfolders" id="toc-set-up-working-directory-and-create-analysis-subfolders">Set up
+working directory and create analysis subfolders</a></li>
+<li><a href="#scrna-seq-dataset-stats" id="toc-scrna-seq-dataset-stats">scRNA-Seq dataset stats</a></li>
+<li><a href="#scrna-seq-data-analysis" id="toc-scrna-seq-data-analysis">scRNA-Seq data analysis</a>
+<ul>
+<li><a href="#create-seurat-object" id="toc-create-seurat-object">Create
+Seurat object</a></li>
+<li><a href="#filter-for-number-of-features-i.e.-genes-count-i.e.-read-count-per-cell-and-percentage-of-reads-mapping-to-the-mitochondrial-genome" id="toc-filter-for-number-of-features-i.e.-genes-count-i.e.-read-count-per-cell-and-percentage-of-reads-mapping-to-the-mitochondrial-genome">Filter
+for number of features (i.e. genes), count (i.e. read count per cell)
+and percentage of reads mapping to the mitochondrial genome</a></li>
+<li><a href="#normalize-data-run-pca-and-divide-into-clusters" id="toc-normalize-data-run-pca-and-divide-into-clusters">Normalize data,
+run PCA and divide into clusters</a></li>
+<li><a href="#annotate-clusters" id="toc-annotate-clusters">Annotate
+clusters</a></li>
+<li><a href="#example-violin-plot-level-of-gene-expression-and-umap-with-overlapped-pattern-of-gene-expression" id="toc-example-violin-plot-level-of-gene-expression-and-umap-with-overlapped-pattern-of-gene-expression">[Example]
+Violin plot (level of gene expression) and UMAP with overlapped pattern
+of gene expression</a></li>
+<li><a href="#samples-cell-composition" id="toc-samples-cell-composition">Samples cell composition</a></li>
+<li><a href="#example-average-gene-expression-and-percent-of-expressing-cells" id="toc-example-average-gene-expression-and-percent-of-expressing-cells">[Example]
+Average gene expression and percent of expressing cells</a></li>
+<li><a href="#differential-expression-analysis-using-seuratfindmarkers" id="toc-differential-expression-analysis-using-seuratfindmarkers">Differential
+expression analysis using Seurat::FindMarkers()</a></li>
+<li><a href="#volcano-plot-of-genes" id="toc-volcano-plot-of-genes">Volcano plot of genes</a></li>
+<li><a href="#example-gene-ontology-go-analysis" id="toc-example-gene-ontology-go-analysis">[Example] Gene Ontology (GO)
+analysis</a></li>
+<li><a href="#example-emap-plot-and-heatplot" id="toc-example-emap-plot-and-heatplot">[Example] Emap plot and
+heatplot</a></li>
+<li><a href="#fold-change-of-ahr-and-its-target-genes" id="toc-fold-change-of-ahr-and-its-target-genes">Fold change of AHR and
+its target genes</a></li>
+<li><a href="#plot-reads-mapping-to-ribosome-genes-in-the-mature-thyrocytes-cluster" id="toc-plot-reads-mapping-to-ribosome-genes-in-the-mature-thyrocytes-cluster">Plot
+% reads mapping to ribosome genes in the Mature Thyrocytes
+cluster</a></li>
+<li><a href="#test-difference-in-rp-among-the-samples-mature-thyrocytes-subpopulation" id="toc-test-difference-in-rp-among-the-samples-mature-thyrocytes-subpopulation">Test
+difference in %RP among the samples Mature Thyrocytes
+subpopulation</a></li>
+<li><a href="#overlap-of-degs-among-comparisons-untr-bap-vs-untr-ctrl-male-bap-vs-male-ctrl-female-bap-vs-female-ctrl" id="toc-overlap-of-degs-among-comparisons-untr-bap-vs-untr-ctrl-male-bap-vs-male-ctrl-female-bap-vs-female-ctrl">Overlap
+of DEGs among comparisons Untr BaP vs Untr Ctrl, Male BaP vs Male Ctrl,
+Female BaP vs Female Ctrl</a></li>
+</ul></li>
+</ul>
+</div>
 
 <p>Markdown document collecting the code used in the paper by Nazzari,
 M., Romitti, M., Kip, A. M., Kamps, R., Costagliola, S., van de Beucken,
